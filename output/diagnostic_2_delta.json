@@ -1,0 +1,42 @@
+{
+  "cv_results": [
+    {
+      "label": "naive (\u0394 = 0)",
+      "mae_mean": 1.1858810496307675,
+      "mae_std": 0.46663038804158935,
+      "r2_mean": -0.030988491429393594,
+      "r2_std": 0.017680827582947523
+    },
+    {
+      "label": "lag-only delta XGBoost",
+      "mae_mean": 1.220780564418789,
+      "mae_std": 0.484276604448598,
+      "r2_mean": -0.05615451495688397,
+      "r2_std": 0.04053505773362736
+    },
+    {
+      "label": "full delta XGBoost (KPIs)",
+      "mae_mean": 1.2362212222484081,
+      "mae_std": 0.47832313632972856,
+      "r2_mean": -0.16193272939896713,
+      "r2_std": 0.21145439714294412
+    }
+  ],
+  "feature_importance": {
+    "fh_combined_score_lag1": 0.09986693412065506,
+    "year_norm": 0.044796764850616455,
+    "score_lag1": 0.04284152761101723,
+    "infant_mortality_lag1": 0.036855299025774,
+    "govt_integrity_delta": 0.03613566607236862,
+    "life_expectancy_lag1": 0.035920754075050354,
+    "tertiary_enroll_pct_lag1": 0.034267034381628036,
+    "internet_pct_sp_lag1": 0.033663392066955566,
+    "investment_freedom_lag1": 0.03304356709122658,
+    "momentum_3yr": 0.03259464353322983,
+    "judicial_effectiveness_delta": 0.031883157789707184,
+    "judicial_effectiveness_lag1": 0.031682420521974564,
+    "tourist_arrivals_lag1": 0.03149569034576416,
+    "trade_pct_gdp_lag1": 0.03130308538675308,
+    "score_lag2": 0.028131190687417984
+  }
+}

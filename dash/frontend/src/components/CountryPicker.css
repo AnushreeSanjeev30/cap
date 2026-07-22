@@ -1,0 +1,122 @@
+.cpicker {
+  position: relative;
+  min-width: 280px;
+  flex: 1 1 360px;
+}
+
+.cpicker-label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.cpicker-trigger {
+  width: 100%;
+  min-height: 44px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cpicker-trigger:hover { border-color: var(--accent); }
+
+.cpicker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.cpicker-placeholder { color: var(--text-faint); font-size: 13px; padding: 4px 2px; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, var(--chip-color) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip-color) 45%, transparent);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 3px 8px 3px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.chip-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--chip-color);
+  flex-shrink: 0;
+}
+
+.chip-x {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 1px;
+}
+.chip-x:hover { color: var(--down); }
+
+.cpicker-caret { color: var(--text-faint); font-size: 12px; padding: 0 4px; }
+
+.cpicker-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+  z-index: 30;
+  overflow: hidden;
+}
+
+.cpicker-search {
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+}
+.cpicker-search:focus { outline: none; }
+
+.cpicker-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.cpicker-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.cpicker-opt:hover { background: var(--accent-soft); }
+.cpicker-opt.is-selected { color: var(--accent); }
+.cpicker-opt.is-disabled { opacity: 0.35; cursor: not-allowed; }
+
+.cpicker-check {
+  width: 14px;
+  color: var(--accent);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.cpicker-opt-name { flex: 1; }
+.cpicker-opt-iso { color: var(--text-faint); font-size: 11px; }
+
+.cpicker-empty { padding: 14px; text-align: center; color: var(--text-faint); font-size: 13px; }

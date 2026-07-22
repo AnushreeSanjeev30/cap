@@ -1,0 +1,111 @@
+.hdr {
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, #0d1119 0%, #0a0d12 100%);
+}
+
+.hdr-top {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 34px 28px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.hdr-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.05;
+  margin: 6px 0 0;
+  letter-spacing: -0.01em;
+}
+
+.hdr-meta {
+  max-width: 420px;
+}
+
+.hdr-meta-row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.hdr-sub {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.ticker {
+  border-top: 1px solid var(--border-soft);
+  background: var(--panel);
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+
+.ticker::before,
+.ticker::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  z-index: 2;
+  pointer-events: none;
+}
+.ticker::before { left: 0; background: linear-gradient(90deg, var(--panel), transparent); }
+.ticker::after { right: 0; background: linear-gradient(270deg, var(--panel), transparent); }
+
+.ticker-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 28px;
+  padding: 9px 0;
+  animation: scroll-left 40s linear infinite;
+}
+
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes scroll-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  padding: 0 22px 0 0;
+  border-right: 1px solid var(--border-soft);
+}
+
+.ticker-name { color: var(--text); letter-spacing: 0.04em; }
+.ticker-arrow { font-size: 9px; }
+
+.ticker-up .ticker-arrow, .ticker-up .ticker-val { color: var(--up); }
+.ticker-down .ticker-arrow, .ticker-down .ticker-val { color: var(--down); }
+
+.ticker-loading {
+  padding: 0 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 720px) {
+  .hdr-top { padding: 24px 16px 16px; }
+  .hdr-title { font-size: 26px; }
+  .hdr-meta-row, .hdr-sub { text-align: left; justify-content: flex-start; }
+}

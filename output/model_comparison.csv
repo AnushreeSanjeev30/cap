@@ -1,0 +1,4 @@
+model,mae_mean,mae_std,r2_mean,r2_std,ci_coverage
+LightGBM,1.7616,0.3486,0.9668,0.0104,0.4954
+RandomForest,1.7969,0.3914,0.9666,0.0109,0.8679
+XGBoost,1.7633,0.3579,0.9665,0.0111,0.5182

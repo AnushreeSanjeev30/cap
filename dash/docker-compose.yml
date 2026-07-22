@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: softpower
+      POSTGRES_PASSWORD: softpower_dev
+      POSTGRES_DB: softpower
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U softpower"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://softpower:softpower_dev@db:5432/softpower
+      ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:4173"
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
