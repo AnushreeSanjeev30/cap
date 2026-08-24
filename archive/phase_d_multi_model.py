@@ -32,7 +32,7 @@ from sklearn.metrics import mean_absolute_error, r2_score
 import warnings
 warnings.filterwarnings('ignore')
 
-from softpower_models import (
+from archive.softpower_models import (
     SoftPowerXGB, SoftPowerRF, SoftPowerLGBM,
     SoftPowerEnsemble, temporal_cv
 )

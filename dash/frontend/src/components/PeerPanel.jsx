@@ -38,7 +38,7 @@ export default function PeerPanel({ focusCountry }) {
                   <span style={{ width: `${Math.max(2, Math.min(100, row.similarity * 100))}%` }} />
                 </div>
                 <div className="peer-meta mono">
-                  <span>{Math.round(row.similarity * 100)}% similar</span>
+                  <span>{(row.similarity * 100).toFixed(1)}% similar</span>
                   {row.rank && <span>#{row.rank}</span>}
                   {row.score !== null && row.score !== undefined && <span>{fmtScore(row.score)}</span>}
                 </div>

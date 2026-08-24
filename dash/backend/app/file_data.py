@@ -268,6 +268,28 @@ class FileDataStore:
         df = pd.read_parquet(path)
         if "iso3" in df.columns:
             df = df.set_index("iso3")
+
+        # Prefer the model pipeline's normalized embedding matrix so cosine
+        # similarities match FAISS-space peers used during training.
+        matrix_path = OUTPUT_DIR / "artifacts" / "embedding_matrix.npy"
+        if matrix_path.exists():
+            try:
+                import numpy as np
+
+                matrix = np.load(matrix_path)
+                if matrix.shape[0] == len(df.index):
+                    vectors = {}
+                    for i, iso3 in enumerate(df.index):
+                        values = [float(v) for v in matrix[i].tolist()]
+                        norm = math.sqrt(sum(v * v for v in values))
+                        if norm > 0:
+                            vectors[str(iso3).upper()] = {"values": values, "norm": norm}
+                    if vectors:
+                        return vectors
+            except Exception:
+                # Fall through to raw parquet vectors if artifacts are not usable.
+                pass
+
         vectors = {}
         for iso3, row in df.iterrows():
             values = [clean_float(v) or 0 for v in row.to_list()]
@@ -319,6 +341,7 @@ class FileDataStore:
                 continue
             dot = sum(a * b for a, b in zip(target["values"], other["values"]))
             similarity = dot / (target["norm"] * other["norm"])
+            similarity = max(-1.0, min(1.0, similarity))
             latest = next((r for r in self.latest if r["iso3"] == other_iso3), {})
             rows.append(
                 {

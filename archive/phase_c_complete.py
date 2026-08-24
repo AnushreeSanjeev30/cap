@@ -198,6 +198,18 @@ model_df = master_s.dropna(subset=['target']).copy()
 EXCLUDE = {COUNTRY_COL, YEAR_COL, 'target', TARGET_COL, 'canonical',
            'regime', 'soft_power_composite_adjusted', 'data_reliability'}
 EXCLUDE.update(DIM_SCORE_COLS)
+# Perfectly (or near-perfectly) collinear sub-components of a composite
+# that's already included as its own feature -- VIF is inf for these
+# (see trust_report.md section 5). Dropping them stops SHAP/importance
+# from arbitrarily splitting credit between duplicates; the composites
+# (fh_combined_score, unesco_total_sites) stay in as features, and the
+# raw sub-columns remain untouched in master_soft_power_panel.csv for
+# the dashboard's dimension display.
+COLLINEAR_SUBCOMPONENTS = {
+    'fh_cl_score', 'fh_pr_score', 'fh_cl_rating', 'fh_pr_rating',
+    'unesco_cultural_sites', 'unesco_natural_sites', 'unesco_mixed_sites',
+}
+EXCLUDE.update(COLLINEAR_SUBCOMPONENTS)
 EXCLUDE.update([c for c in model_df.columns
                 if c.startswith(('D1_','D2_','D3_','D4_','D5_'))
                 and c not in TEMPORAL_INDICATORS])

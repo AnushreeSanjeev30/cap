@@ -281,7 +281,7 @@ def update_kalman_state(kalman_results_path: str,
     Update Kalman filter with new year's observations.
     Appends new rows to kalman_results.csv using the last state as prior.
     """
-    from kalman_softpower_complete import kalman_filter_country, optimize_kalman_params
+    from archive.kalman_softpower_complete import kalman_filter_country, optimize_kalman_params
 
     if not os.path.exists(kalman_results_path):
         print(f"  ⚠️  {kalman_results_path} not found — skipping Kalman update.")

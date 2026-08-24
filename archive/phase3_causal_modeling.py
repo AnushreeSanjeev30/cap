@@ -266,7 +266,7 @@ if __name__ == '__main__':
     with open('artifacts/xgb_model.pkl', 'rb') as f:
         xgb_model = pickle.load(f)
     
-    from phase2_predictive_model import get_feature_cols
+    from archive.phase2_predictive_model import get_feature_cols
     feature_cols = get_feature_cols(model_df, INDICATORS)
     
     result = simulate_intervention(

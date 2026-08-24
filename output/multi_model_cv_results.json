@@ -1,32 +1,32 @@
 {
   "XGBoost": {
-    "mae_mean": 1.7633,
-    "mae_std": 0.3579,
-    "r2_mean": 0.9665,
-    "r2_std": 0.0111,
-    "ci_coverage": 0.5182,
+    "mae_mean": 1.8366,
+    "mae_std": 0.3263,
+    "r2_mean": 0.9663,
+    "r2_std": 0.0098,
+    "ci_coverage": 0.6848,
     "n_folds": 4
   },
   "RandomForest": {
-    "mae_mean": 1.7969,
-    "mae_std": 0.3914,
-    "r2_mean": 0.9666,
-    "r2_std": 0.0109,
-    "ci_coverage": 0.8679,
+    "mae_mean": 1.9958,
+    "mae_std": 0.3397,
+    "r2_mean": 0.9628,
+    "r2_std": 0.0096,
+    "ci_coverage": 0.6855,
     "n_folds": 4
   },
   "LightGBM": {
-    "mae_mean": 1.7616,
-    "mae_std": 0.3486,
-    "r2_mean": 0.9668,
-    "r2_std": 0.0104,
-    "ci_coverage": 0.4954,
+    "mae_mean": 1.9751,
+    "mae_std": 0.3521,
+    "r2_mean": 0.9628,
+    "r2_std": 0.0105,
+    "ci_coverage": 0.6427,
     "n_folds": 4
   },
-  "best_model": "LightGBM",
+  "best_model": "XGBoost",
   "ensemble_weights": {
-    "XGBoost": 0.25,
+    "XGBoost": 0.5,
     "RandomForest": 0.25,
-    "LightGBM": 0.5
+    "LightGBM": 0.25
   }
 }

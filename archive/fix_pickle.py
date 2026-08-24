@@ -8,7 +8,7 @@ import sys
 import os
 
 # ── Step 1: Patch __main__ so the old pickle can deserialize ─────────────────
-from softpower_models import SoftPowerXGB, SoftPowerRF, SoftPowerLGBM, SoftPowerEnsemble
+from archive.softpower_models import SoftPowerXGB, SoftPowerRF, SoftPowerLGBM, SoftPowerEnsemble
 
 # Make these classes findable under __main__ (where they were originally pickled)
 sys.modules['__main__'].SoftPowerXGB  = SoftPowerXGB

@@ -8,7 +8,7 @@ Phase 2: Soft Power Predictive Model
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from softpower_models import SoftPowerXGB
+from archive.softpower_models import SoftPowerXGB
 import lightgbm as lgb
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, r2_score

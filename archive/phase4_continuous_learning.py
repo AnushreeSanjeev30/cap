@@ -90,7 +90,7 @@ class ContinuousLearner:
         Full retrain on all available historical data + new year.
         XGBoost trains from scratch (preferred over incremental for tree ensembles).
         """
-        from phase2_predictive_model import (
+        from archive.phase2_predictive_model import (
             assemble_model_features, SoftPowerXGB, temporal_cross_validate
         )
         
@@ -144,7 +144,7 @@ class ContinuousLearner:
         For BSTS: adding new observations and re-forecasting is the update step.
         The Bayesian model naturally incorporates new data by extending the series.
         """
-        from phase2_predictive_model import forecast_all_countries
+        from archive.phase2_predictive_model import forecast_all_countries
         
         # Re-run BSTS with extended series (includes the new year)
         updated_forecast = forecast_all_countries(new_df, score_col=score_col)
@@ -208,7 +208,7 @@ class SoftPowerAgent:
         
         forecast = self.forecast_df[self.forecast_df['country_iso3']==iso3].sort_values('horizon')
         
-        from phase1_trend_and_similarity import find_peer_nations
+        from archive.phase1_trend_and_similarity import find_peer_nations
         peers = find_peer_nations(iso3, self.embed_df, self.embed_matrix, 
                                   self.faiss_index, k=5)
         
@@ -241,7 +241,7 @@ class SoftPowerAgent:
     def what_if(self, iso3: str, treatment: str, delta: float,
                  model_df: pd.DataFrame, feature_cols: list) -> dict:
         """Counterfactual query via the SCM intervention simulator."""
-        from phase3_causal_modeling import simulate_intervention
+        from archive.phase3_causal_modeling import simulate_intervention
         return simulate_intervention(
             country=iso3,
             treatment_var=treatment,
@@ -290,7 +290,7 @@ def run_annual_update(new_year_data_path: str,
     print(f"[Master panel] Now {len(master_df)} rows")
     
     # Phase 1
-    from phase1_trend_and_similarity import (
+    from archive.phase1_trend_and_similarity import (
         compute_trend_features, build_country_embeddings,
         build_faiss_index, save_phase1_artifacts
     )
@@ -300,7 +300,7 @@ def run_annual_update(new_year_data_path: str,
     save_phase1_artifacts(trend_df, embed_df, matrix, index, scaler, artifacts_dir)
     
     # Phase 2 retrain
-    from phase2_predictive_model import assemble_model_features, get_feature_cols
+    from archive.phase2_predictive_model import assemble_model_features, get_feature_cols
     model_df = assemble_model_features(master_df, trend_df.reset_index(), indicators)
     feature_cols = get_feature_cols(model_df, indicators)
     

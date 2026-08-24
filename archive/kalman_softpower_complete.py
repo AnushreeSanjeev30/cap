@@ -45,10 +45,16 @@ FORECAST_HORIZON = 5   # years ahead to forecast
 # PART 1: YOUR ORIGINAL KALMAN FILTER (unchanged, just wrapped cleanly)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def kalman_filter_country(scores: np.ndarray):
+def kalman_filter_country(scores: np.ndarray, Q: float = None, R: float = None):
     """
     1D Kalman Filter. Returns (filtered_means, filtered_vars, innovations).
-    Uses adaptive Q/R from the data itself.
+
+    Q/R default to the fixed 30%/10%-of-variance heuristic if not given.
+    Callers that already have per-country fitted values (see
+    optimize_kalman_params) should pass them in explicitly -- the fixed
+    heuristic leaves innovations autocorrelated for ~a third of countries
+    (see trust_report.md section 6), because 0.3/0.1 isn't the right
+    noise split for every country's dynamics.
     """
     n = len(scores)
     valid = scores[~np.isnan(scores)]
@@ -56,8 +62,10 @@ def kalman_filter_country(scores: np.ndarray):
         return None
 
     diffs = np.diff(valid)
-    Q = np.var(diffs) * 0.3
-    R = np.var(valid)  * 0.1
+    if Q is None:
+        Q = np.var(diffs) * 0.3
+    if R is None:
+        R = np.var(valid) * 0.1
 
     x = valid[0]
     P = np.var(valid)
@@ -202,12 +210,12 @@ def forecast_country(iso: str,
 
     Returns a list of dicts (one per forecast year).
     """
-    out = kalman_filter_country(scores)
+    Q, R = optimize_kalman_params(scores)
+    out = kalman_filter_country(scores, Q=Q, R=R)
     if out is None:
         return []
 
     filtered_means, filtered_vars, _ = out
-    Q, R = optimize_kalman_params(scores)
 
     # Use RTS smoother for better state estimate
     smoothed_means, smoothed_vars = rts_smoother(filtered_means, filtered_vars, Q)
@@ -393,12 +401,12 @@ def run_kalman_all_countries(df: pd.DataFrame):
         scores = cdf[SCORE_COL].values
         years  = cdf[YEAR_COL].values
 
-        out = kalman_filter_country(scores)
+        Q, R = optimize_kalman_params(scores)
+        out = kalman_filter_country(scores, Q=Q, R=R)
         if out is None:
             continue
 
         filtered_means, filtered_vars, innovations = out
-        Q, _ = optimize_kalman_params(scores)
         smoothed_means, smoothed_vars = rts_smoother(filtered_means, filtered_vars, Q)
 
         for i, yr in enumerate(years):

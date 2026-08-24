@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore')
 
 
 try:
-    from phase_c_model_ready import SoftPowerXGB
+    from archive.phase_c_model_ready import SoftPowerXGB
 except Exception:
     print("Import failed — using local class definition for SoftPowerXGB.")
     class SoftPowerXGB:

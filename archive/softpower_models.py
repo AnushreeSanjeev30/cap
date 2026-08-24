@@ -449,14 +449,41 @@ def temporal_cv(model_class, df: pd.DataFrame, feature_cols: list,
         if len(test) < 20 or len(train) < 50:
             continue
 
-        X_tr = train[feature_cols].fillna(0)
-        y_tr = train[target_col]
-        X_te = test[feature_cols].fillna(0)
-        y_te = test[target_col]
+        # Split off the most recent slice of train as a conformal calibration
+        # set (fit_set strictly precedes calib_set strictly precedes test).
+        # Each model's own ci_lower/ci_upper (raw quantile regression, or
+        # tree-variance for RF) is systematically miscalibrated -- see
+        # trust_report.md section 1. Replacing it with an empirical residual
+        # quantile from held-out-in-time data fixes that without touching
+        # each model's point-prediction interface.
+        train_years = sorted(train[year_col].unique())
+        calib_cut = train_years[max(0, len(train_years) - max(1, len(train_years) // 5))]
+        fit_set   = train[train[year_col] <  calib_cut]
+        calib_set = train[train[year_col] >= calib_cut]
+        if len(fit_set) < 50 or len(calib_set) < 20:
+            fit_set, calib_set = train, train  # not enough history to split cleanly
+
+        X_fit = fit_set[feature_cols].fillna(0)
+        y_fit = fit_set[target_col]
+        X_te  = test[feature_cols].fillna(0)
+        y_te  = test[target_col]
 
         m = model_class(**model_kwargs)
-        m.fit(X_tr, y_tr)
+        m.fit(X_fit, y_fit)
+
+        calib_preds = m.predict(calib_set[feature_cols].fillna(0))
+        calib_resid = np.abs(calib_set[target_col].values - calib_preds['score'].values)
+        # Finite-sample-corrected conformal quantile (Vovk et al.): the plain
+        # empirical 80th percentile undercovers on small calibration sets.
+        # Using ceil((n+1)*0.80)/n as the quantile level instead guarantees
+        # the intended marginal coverage on average, not just asymptotically.
+        n_calib = len(calib_resid)
+        q_level = min(1.0, np.ceil((n_calib + 1) * 0.80) / n_calib)
+        half_width = np.quantile(calib_resid, q_level)
+
         preds = m.predict(X_te)
+        preds['ci_lower'] = np.clip(preds['score'] - half_width, 0, 100)
+        preds['ci_upper'] = np.clip(preds['score'] + half_width, 0, 100)
 
         mae = mean_absolute_error(y_te, preds['score'])
         r2  = r2_score(y_te, preds['score'])
