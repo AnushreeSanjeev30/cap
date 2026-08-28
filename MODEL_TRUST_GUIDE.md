@@ -162,6 +162,13 @@ from it to read back), but the same skepticism applies double here:
   included in the adjustment set. Re-run with a couple of alternate adjustment
   sets before trusting a specific ATE number in a headline claim.
 
+**Update:** `ridge_coefficients.csv`, `shap_global.csv`, and `shap_country.csv`
+previously had no generating script anywhere in the repo and were static,
+pre-multicollinearity-fix snapshots. `archive/regenerate_shap_outputs.py` now
+regenerates all three against the currently deployed model
+(`output/artifacts/xgb_model.pkl`) and the current (deduplicated —
+see `archive/fix_duplicate_rows.py`) panel. Re-run it after retraining.
+
 ## 7. External validity: does the ranking agree with anything outside this pipeline?
 
 Everything above proves the model is *internally* well-behaved — it doesn't

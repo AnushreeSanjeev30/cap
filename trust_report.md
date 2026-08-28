@@ -81,15 +81,15 @@ All delta (year-over-year change) variants have R^2 <= 0 in cross-validation, me
 
 ### Random vs temporal vs held-out-country R^2 — **PASS**
 
-Target: soft_power_score   |   119 non-leaky numeric features   |   4382 rows
+Target: soft_power_score   |   119 non-leaky numeric features   |   4290 rows
 
 split                               r2       mae
-random 80/20 rows               0.9973    0.4921
-temporal (train<=2019)          0.9869    1.0487
-held-out countries (20%)        0.9618    1.9272
+random 80/20 rows               0.9970    0.5197
+temporal (train<=2019)          0.9859    1.1031
+held-out countries (20%)        0.9625    1.9048
 
-random-vs-held-out-country R^2 gap = 0.0356
-random-vs-temporal R^2 gap = 0.0104
+random-vs-held-out-country R^2 gap = 0.0345
+random-vs-temporal R^2 gap = 0.0111
 
 Random, temporal, and held-out-country splits score similarly -- no strong sign of the model exploiting row-level shortcuts.
 
@@ -109,9 +109,9 @@ Top 10 VIF values (>10 conventionally flags problematic redundancy):
   fh_combined_score                    inf
   unesco_total_sites                   inf
   unesco_natural_sites                 inf
-  market_freedom                    166.55
+  market_freedom                    159.84
 
-30 of 54 features have VIF > 10.
+31 of 54 features have VIF > 10.
 
 Highly collinear inputs don't hurt tree-model (XGBoost/LightGBM/RF) point predictions much, but they do destabilize per-feature attribution: SHAP/importance can arbitrarily split credit between two features that carry almost the same information. Read single-feature SHAP explanations for these features as 'this cluster of related indicators mattered', not as a precise ranking within the cluster. Ridge/linear coefficients on these features (ridge_coefficients.csv) are the ones most at risk of being unstable.
 
@@ -121,7 +121,7 @@ Highly collinear inputs don't hurt tree-model (XGBoost/LightGBM/RF) point predic
 ### Innovation white-noise check — **PASS**
 
 Countries checked: 195
-Mean lag-1 autocorrelation of innovations: +0.098
+Mean lag-1 autocorrelation of innovations: +0.105
 Share of countries with |autocorrelation| > 0.3: 22.1%
 
 Innovations look close to white noise on average -- the fixed Q/R choice is a reasonable fit.
@@ -131,8 +131,8 @@ Innovations look close to white noise on average -- the fixed Q/R choice is a re
 
 ### Empirical vs nominal 95% coverage — **PASS**
 
-Observations checked: 4640
-Empirical coverage of the stated 95% band: 98.3%  (nominal target: 95%)
+Observations checked: 4547
+Empirical coverage of the stated 95% band: 98.5%  (nominal target: 95%)
 
 Caveat: this compares each year's smoothed estimate's CI against the SAME year's observation the filter already used to update itself, not a true out-of-sample forecast -- so it is a lower bound on how good calibration could look, not a substitute for backtesting kalman_forecast_5yr.csv against years that have since become observable.
 

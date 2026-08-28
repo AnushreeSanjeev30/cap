@@ -59,9 +59,12 @@ def nearest_by_year(points, target):
     return min(points, key=lambda p: abs(p["year"] - target))
 
 
+def strip_feature_suffix(name):
+    return name.replace("_lag1", "").replace("_lag2", "").replace("_slope", "")
+
+
 def feature_label(name):
-    cleaned = name.replace("_lag1", "").replace("_lag2", "").replace("_slope", "")
-    return cleaned.replace("_", " ").title()
+    return strip_feature_suffix(name).replace("_", " ").title()
 
 
 def volatility_tier(value):
@@ -244,15 +247,30 @@ class FileDataStore:
         return by_iso3
 
     def _build_global_importance(self, shap_global):
-        rows = []
+        # Group lag/slope variants of the same base indicator (e.g.
+        # infant_mortality and infant_mortality_lag1) under one bar before
+        # ranking. Without this, two variants of the same concept can both
+        # land in the top 12 with the identical display label (feature_label()
+        # strips the _lag1/_lag2/_slope suffix), which breaks the dashboard's
+        # vertical bar chart: Recharts' categorical Y-axis can't distinguish
+        # two rows with the same category text, so bars below the collision
+        # render misaligned with their own tooltip data.
+        groups = {}
         for row in shap_global:
-            rows.append(
-                {
-                    "feature": feature_label(row.get("kpi") or ""),
-                    "raw": row.get("kpi") or "",
-                    "importance": clean_float(row.get("mean_abs_shap")) or 0,
-                }
-            )
+            raw = row.get("kpi") or ""
+            base = strip_feature_suffix(raw)
+            importance = clean_float(row.get("mean_abs_shap")) or 0
+            g = groups.setdefault(base, {"raw": raw, "importance": 0.0})
+            g["importance"] += importance
+            # Prefer the un-lagged variant's raw name for the tooltip lookup
+            # if we later see it (groups may first encounter a _lag1 row).
+            if raw == base:
+                g["raw"] = raw
+
+        rows = [
+            {"feature": feature_label(g["raw"]), "raw": g["raw"], "importance": g["importance"]}
+            for g in groups.values()
+        ]
         rows.sort(key=lambda r: r["importance"], reverse=True)
         return rows[:12]
 

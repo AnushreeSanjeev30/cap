@@ -18,6 +18,25 @@ from datetime import datetime
 from pathlib import Path
 
 
+# Copied (not imported) from archive/phase_c_model_ready.py's module-level
+# config -- that module runs a full retrain as a side effect of being
+# imported, so its constants are duplicated here rather than pulled in live.
+# Keep these in sync if the feature set there ever changes.
+TEMPORAL_INDICATORS = [
+    'tourist_arrivals', 'unesco_total_sites', 'unesco_cultural_sites',
+    'internet_pct_sp', 'rnd_pct_gdp_sp', 'sci_journal_articles',
+    'ai_publications', 'hightech_exports_pct',
+    'fh_combined_score', 'trade_pct_gdp', 'investment_freedom',
+    'govt_integrity', 'judicial_effectiveness', 'property_rights', 'business_freedom',
+    'life_expectancy', 'tertiary_enroll_pct', 'physicians_per_1k', 'infant_mortality',
+]
+DIM_SCORE_COLS = [
+    'D1_Cultural_Influence_score', 'D2_Innovation_Knowledge_score',
+    'D3_Political_Legitimacy_score', 'D4_Institutional_Quality_score',
+    'D5_Human_Development_score',
+]
+
+
 # ─── 1. DATA INGESTION + VALIDATION ─────────────────────────────────────────
 
 EXPECTED_SCHEMA = {
@@ -168,50 +187,71 @@ class ContinuousLearner:
 
 # ─── 3. SOFT POWER AGENT INTERFACE ──────────────────────────────────────────
 
+# NOTE: this class originally pointed at a root-level artifacts/ snapshot
+# (soft_power_output.parquet, soft_power_forecast.parquet, ...) that predates
+# the current output/ pipeline and no longer exists in that form -- it would
+# raise FileNotFoundError on load. Repointed at the files the pipeline
+# actually produces today (output/soft_power_predictions.csv,
+# output/kalman_forecast_5yr.csv, output/trend_features.parquet,
+# output/artifacts/*) and the column names those files actually use
+# (iso3, not country_iso3; volatility_tier, not volatility_class; ...).
+
 class SoftPowerAgent:
     """
     High-level query interface for the Soft Power Agent.
     Wraps all pipeline artifacts into simple method calls.
     """
-    
-    def __init__(self, artifacts_dir='artifacts'):
-        self.dir = Path(artifacts_dir)
+
+    def __init__(self, output_dir='output'):
+        self.dir = Path(output_dir)
         self._load_artifacts()
-    
+
     def _load_artifacts(self):
-        self.output_df  = pd.read_parquet(self.dir / 'soft_power_output.parquet')
-        self.forecast_df = pd.read_parquet(self.dir / 'soft_power_forecast.parquet')
-        self.trend_df   = pd.read_parquet(self.dir / 'trend_features.parquet').reset_index()
-        
-        with open(self.dir / 'xgb_model.pkl', 'rb') as f:
+        self.output_df = pd.read_csv(self.dir / 'soft_power_predictions.csv')
+        self.output_df['iso3'] = self.output_df['iso3'].str.upper()
+
+        self.forecast_df = pd.read_csv(self.dir / 'kalman_forecast_5yr.csv')
+        self.forecast_df['iso3'] = self.forecast_df['iso3'].str.upper()
+
+        # trend_features.parquet is indexed by iso3, not a plain column.
+        self.trend_df = pd.read_parquet(self.dir / 'trend_features.parquet')
+        self.trend_df.index = self.trend_df.index.str.upper()
+
+        with open(self.dir / 'artifacts' / 'xgb_model.pkl', 'rb') as f:
             self.model = pickle.load(f)
-        
+
         import faiss
-        self.faiss_index = faiss.read_index(str(self.dir / 'faiss_index.bin'))
-        self.embed_df    = pd.read_parquet(self.dir / 'country_embeddings.parquet')
-        
-        with open(self.dir / 'embedding_scaler.pkl', 'rb') as f:
+        self.faiss_index = faiss.read_index(str(self.dir / 'artifacts' / 'faiss_index.bin'))
+        self.embed_df = pd.read_parquet(self.dir / 'country_embeddings.parquet')
+
+        with open(self.dir / 'artifacts' / 'embedding_scaler.pkl', 'rb') as f:
             self.scaler = pickle.load(f)
-        
-        self.embed_matrix = np.load(self.dir / 'embedding_matrix.npy')
+
+        self.embed_matrix = np.load(self.dir / 'artifacts' / 'embedding_matrix.npy')
         import faiss as _f
         _f.normalize_L2(self.embed_matrix.astype('float32'))
-    
+
+        # master_phase_b.parquet is needed to reconstruct model-ready features
+        # for what_if() counterfactuals -- loaded lazily, not at init, since
+        # get_country_report/global_rankings/regime_clusters don't need it.
+        self._master = None
+
     def get_country_report(self, iso3: str) -> dict:
         """Full soft power report for a single country."""
-        row = self.output_df[self.output_df['country_iso3']==iso3]
+        iso3 = iso3.upper()
+        row = self.output_df[self.output_df['iso3'] == iso3]
         if len(row) == 0:
             return {'error': f'{iso3} not found'}
         row = row.iloc[0]
-        
-        trend = self.trend_df[self.trend_df['country_iso3']==iso3]
-        
-        forecast = self.forecast_df[self.forecast_df['country_iso3']==iso3].sort_values('horizon')
-        
+
+        forecast = self.forecast_df[self.forecast_df['iso3'] == iso3].sort_values('horizon')
+
         from archive.phase1_trend_and_similarity import find_peer_nations
-        peers = find_peer_nations(iso3, self.embed_df, self.embed_matrix, 
+        peers = find_peer_nations(iso3, self.embed_df, self.embed_matrix,
                                   self.faiss_index, k=5)
-        
+
+        trend_row = self.trend_df.loc[iso3] if iso3 in self.trend_df.index else None
+
         return {
             'country':          iso3,
             'latent_score':     round(float(row['score']), 2),
@@ -219,37 +259,99 @@ class SoftPowerAgent:
             'ci_upper':         round(float(row['ci_upper']), 2),
             'global_rank':      int(row['global_rank']),
             'regime':           str(row.get('regime', 'unknown')),
-            'volatility':       str(row.get('volatility_class', 'unknown')),
+            'volatility':       str(row.get('volatility_tier', 'unknown')),
             'influence_growth': round(float(row.get('influence_growth', 0)), 4),
-            '5y_forecast':      forecast[['horizon','forecast_mean',
-                                          'forecast_ci_lo','forecast_ci_hi']].to_dict('records'),
+            'momentum_5y':      round(float(trend_row['momentum_5y']), 4) if trend_row is not None else None,
+            '5y_forecast':      forecast[['horizon', 'forecast_year', 'forecast_score',
+                                          'ci_lower_95', 'ci_upper_95']].to_dict('records'),
             'peer_nations':     peers.to_dict('records'),
         }
-    
+
     def global_rankings(self, top_n=20) -> pd.DataFrame:
-        return self.output_df.head(top_n)[
-            ['country_iso3', 'score', 'ci_lower', 'ci_upper', 
-             'global_rank', 'regime', 'volatility_class']
+        return self.output_df.sort_values('global_rank').head(top_n)[
+            ['iso3', 'score', 'ci_lower', 'ci_upper',
+             'global_rank', 'regime', 'volatility_tier']
         ]
-    
+
     def regime_clusters(self) -> pd.DataFrame:
         return self.output_df.groupby('regime').agg(
-            n_countries=('country_iso3', 'count'),
+            n_countries=('iso3', 'count'),
             avg_score=('score', 'mean')
         ).reset_index()
-    
-    def what_if(self, iso3: str, treatment: str, delta: float,
-                 model_df: pd.DataFrame, feature_cols: list) -> dict:
-        """Counterfactual query via the SCM intervention simulator."""
-        from archive.phase3_causal_modeling import simulate_intervention
-        return simulate_intervention(
-            country=iso3,
-            treatment_var=treatment,
-            delta=delta,
-            model_df=model_df,
-            xgb_model=self.model,
-            feature_cols=feature_cols
-        )
+
+    def _model_ready_row(self, iso3: str) -> pd.DataFrame:
+        """
+        Rebuild the single most-recent-year, model-ready feature row for one
+        country -- the lag1/lag2/rolling/year_norm/trend-slope features the
+        trained model was fit on. Mirrors build_model_features() in
+        archive/phase_c_model_ready.py, but only for one country's latest row
+        and without importing that module (which retrains and overwrites
+        output/ as a side effect of being imported -- not safe to trigger
+        from a query call).
+        """
+        if self._master is None:
+            self._master = pd.read_parquet(self.dir / 'master_phase_b.parquet')
+            if 'country_iso3' in self._master.columns and 'iso3' not in self._master.columns:
+                self._master = self._master.rename(columns={'country_iso3': 'iso3'})
+            self._master['iso3'] = self._master['iso3'].str.upper()
+
+        cdf = self._master[self._master['iso3'] == iso3].sort_values('year').copy()
+        if len(cdf) == 0:
+            raise ValueError(f"{iso3} not found in master_phase_b.parquet")
+
+        target_col = 'soft_power_composite_raw'
+        indicators = [c for c in TEMPORAL_INDICATORS if c in cdf.columns]
+        dim_cols = [c for c in DIM_SCORE_COLS if c in cdf.columns]
+
+        for ind in indicators:
+            cdf[f'{ind}_lag1'] = cdf[ind].shift(1)
+            cdf[f'{ind}_lag2'] = cdf[ind].shift(2)
+        for dim in dim_cols:
+            cdf[f'{dim}_lag1'] = cdf[dim].shift(1)
+        cdf['score_roll3_mean'] = cdf[target_col].rolling(3, min_periods=2).mean()
+        cdf['score_roll3_std'] = cdf[target_col].rolling(3, min_periods=2).std()
+        cdf['year_norm'] = (cdf['year'] - 2000) / 24.0
+
+        latest = cdf.iloc[[-1]].copy()
+
+        if iso3 in self.trend_df.index:
+            slope_cols = [c for c in self.trend_df.columns
+                          if c.endswith('_slope') or c in
+                          ('score_volatility', 'influence_growth', 'momentum_5y', 'score_r2')]
+            for c in slope_cols:
+                latest[c] = self.trend_df.loc[iso3, c]
+
+        return latest.reindex(columns=self.model.feature_cols, fill_value=0).fillna(0)
+
+    def what_if(self, iso3: str, treatment: str, delta: float) -> dict:
+        """
+        Counterfactual query: what would iso3's score be if `treatment`
+        moved by `delta`? Uses the trained XGBoost model directly (see the
+        caveats on causal claims in MODEL_TRUST_GUIDE.md section 6 -- this
+        is a model-based sensitivity check, not a validated causal estimate).
+        """
+        iso3 = iso3.upper()
+        X_base = self._model_ready_row(iso3)
+        X_counter = X_base.copy()
+
+        if treatment in X_counter.columns:
+            X_counter[treatment] = X_counter[treatment] + delta
+        elif f'{treatment}_lag1' in X_counter.columns:
+            X_counter[f'{treatment}_lag1'] = X_counter[f'{treatment}_lag1'] + delta
+        else:
+            return {'error': f"'{treatment}' is not a feature this model uses"}
+
+        baseline = self.model.predict(X_base)
+        counterfactual = self.model.predict(X_counter)
+
+        return {
+            'country':       iso3,
+            'treatment':     treatment,
+            'delta':         delta,
+            'score_base':    float(baseline['score'].iloc[0]),
+            'score_counter': float(counterfactual['score'].iloc[0]),
+            'effect':        float(counterfactual['score'].iloc[0] - baseline['score'].iloc[0]),
+        }
 
 
 # ─── 4. ANNUAL UPDATE PIPELINE (entry point) ────────────────────────────────

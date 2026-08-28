@@ -16,11 +16,20 @@ Outputs:
   output/kalman_regimes.csv          ← NEW: regime classification per country
 """
 
+import sys
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize_scalar
 import warnings
 warnings.filterwarnings('ignore')
+
+# Windows consoles often default to cp1252, which chokes on characters like
+# 'Δ' and '→' used in this script's console output below.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 # ── CONFIG (same as your original) ───────────────────────────────────────────
 MASTER_PARQUET = 'output/master_phase_b.parquet'
