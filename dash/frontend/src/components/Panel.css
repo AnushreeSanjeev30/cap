@@ -186,6 +186,29 @@
 
 .peer-row:last-child { border-bottom: none; }
 
+.peer-explanation {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.peer-explanation-label {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 9px;
+}
+
+.peer-explanation-detail {
+  flex-basis: 100%;
+  color: var(--text-faint);
+}
+
 .peer-main {
   min-width: 0;
 }

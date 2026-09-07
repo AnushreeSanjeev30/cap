@@ -1,5 +1,6 @@
 import csv
 import math
+import pickle
 from functools import lru_cache
 from pathlib import Path
 
@@ -30,6 +31,18 @@ DIMENSIONS = {
     "infant_mortality": "human",
     "physicians_per_1k": "human",
     "tertiary_enroll_pct": "human",
+}
+
+PEER_DIMENSIONS = {
+    "Culture": {"tourist_arrivals", "unesco_total_sites", "unesco_cultural_sites"},
+    "Innovation": {
+        "rnd_pct_gdp_sp", "internet_pct_sp", "ai_publications",
+        "rd_researchers_per_mil", "sci_journal_articles", "hightech_exports_pct",
+        "ict_patents",
+    },
+    "Politics": {"fh_status_num", "fh_combined_score", "fh_total_score", "trade_pct_gdp", "investment_freedom"},
+    "Governance": {"property_rights", "govt_integrity", "judicial_effectiveness", "business_freedom"},
+    "Human development": {"life_expectancy", "infant_mortality", "physicians_per_1k", "tertiary_enroll_pct"},
 }
 
 
@@ -101,6 +114,7 @@ class FileDataStore:
         self.forecast_by_iso3 = self._build_forecast(forecast)
         self.global_importance = self._build_global_importance(shap_global)
         self.peer_vectors = self._build_peer_vectors()
+        self.peer_features = self._build_peer_features()
 
     def _build_country_names(self, panel, refs):
         names = {}
@@ -316,6 +330,78 @@ class FileDataStore:
                 vectors[str(iso3).upper()] = {"values": values, "norm": norm}
         return vectors
 
+    def _build_peer_features(self):
+        """Load the feature values used by the FAISS peer vectors."""
+        try:
+            import numpy as np
+            import pandas as pd
+
+            path = OUTPUT_DIR / "country_embeddings.parquet"
+            scaler_path = OUTPUT_DIR / "artifacts" / "embedding_scaler.pkl"
+            if not path.exists() or not scaler_path.exists():
+                return {}
+            df = pd.read_parquet(path)
+            if "iso3" in df.columns:
+                df = df.set_index("iso3")
+            with open(scaler_path, "rb") as handle:
+                scaler = pickle.load(handle)
+            values = scaler.transform(df.values).astype("float32")
+            return {
+                "columns": list(df.columns),
+                "raw": df,
+                "standardized": {
+                    str(iso3).upper(): values[i]
+                    for i, iso3 in enumerate(df.index)
+                },
+            }
+        except Exception:
+            return {}
+
+    def _explain_peer_pair(self, iso3, other_iso3):
+        import numpy as np
+
+        features = self.peer_features
+        if not features or iso3 not in features["standardized"] or other_iso3 not in features["standardized"]:
+            return {"dimensions": [], "indicators": []}
+
+        columns = features["columns"]
+        left = features["standardized"][iso3]
+        right = features["standardized"][other_iso3]
+        denominator = float(np.linalg.norm(left) * np.linalg.norm(right))
+        if denominator <= 0:
+            return {"dimensions": [], "indicators": []}
+
+        contributions = {}
+        dimension_scores = {name: 0.0 for name in PEER_DIMENSIONS}
+        for index, column in enumerate(columns):
+            base = column.removesuffix("_mean").removesuffix("_std")
+            contribution = float(left[index] * right[index] / denominator)
+            contributions[column] = contribution
+            for dimension, indicators in PEER_DIMENSIONS.items():
+                if base in indicators:
+                    dimension_scores[dimension] += contribution
+
+        dimensions = [
+            {"name": name, "contribution": round(value, 4)}
+            for name, value in sorted(dimension_scores.items(), key=lambda item: item[1], reverse=True)
+            if value > 0
+        ][:3]
+
+        raw = features["raw"]
+        indicators = []
+        for column, contribution in sorted(contributions.items(), key=lambda item: item[1], reverse=True):
+            if not column.endswith("_mean") or contribution <= 0:
+                continue
+            indicators.append({
+                "label": column.removesuffix("_mean").replace("_", " ").title(),
+                "contribution": round(contribution, 4),
+                "countryValue": clean_float(raw.loc[iso3, column]),
+                "peerValue": clean_float(raw.loc[other_iso3, column]),
+            })
+            if len(indicators) == 3:
+                break
+        return {"dimensions": dimensions, "indicators": indicators}
+
     def get_timeseries(self, iso3_list, y_start, y_end):
         return {
             iso3: [
@@ -369,6 +455,7 @@ class FileDataStore:
                     "score": latest.get("score"),
                     "rank": latest.get("rank"),
                     "stability_class": latest.get("stability_class"),
+                    "explanation": self._explain_peer_pair(iso3, other_iso3),
                 }
             )
         rows.sort(key=lambda r: r["similarity"], reverse=True)

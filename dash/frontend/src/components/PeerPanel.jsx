@@ -42,6 +42,17 @@ export default function PeerPanel({ focusCountry }) {
                   {row.rank && <span>#{row.rank}</span>}
                   {row.score !== null && row.score !== undefined && <span>{fmtScore(row.score)}</span>}
                 </div>
+                {row.explanation?.dimensions?.length > 0 && (
+                  <div className="peer-explanation">
+                    <span className="peer-explanation-label">Shared profile</span>
+                    <span>{row.explanation.dimensions.map((dimension) => dimension.name).join(" · ")}</span>
+                    {row.explanation.indicators?.length > 0 && (
+                      <span className="peer-explanation-detail">
+                        Strongest matches: {row.explanation.indicators.map((indicator) => indicator.label).join(", ")}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
