@@ -115,6 +115,8 @@ class FileDataStore:
         self.global_importance = self._build_global_importance(shap_global)
         self.peer_vectors = self._build_peer_vectors()
         self.peer_features = self._build_peer_features()
+        self.quality_by_key = self._build_quality(panel, kalman)
+        self.latest_by_iso3 = {row["iso3"]: row for row in self.latest}
 
     def _build_country_names(self, panel, refs):
         names = {}
@@ -287,6 +289,28 @@ class FileDataStore:
         ]
         rows.sort(key=lambda r: r["importance"], reverse=True)
         return rows[:12]
+
+    def _build_quality(self, panel, kalman):
+        """Per (iso3, year): share of raw KPIs missing before imputation, and the Kalman 95% CI.
+
+        Used by the agent endpoint to turn data quality into a confidence value.
+        """
+        kpis = list(DIMENSIONS)
+        quality = {}
+        for row in panel:
+            iso3 = (row.get("iso3") or "").upper()
+            year = clean_int(row.get("year"))
+            if len(iso3) != 3 or year is None:
+                continue
+            missing = sum(1 for k in kpis if clean_float(row.get(k)) is None)
+            quality[(iso3, year)] = {"kpi_missing_share": round(missing / len(kpis), 4)}
+        for row in kalman:
+            key = ((row.get("iso3") or "").upper(), clean_int(row.get("year")))
+            entry = quality.setdefault(key, {})
+            entry["ci_lower"] = clean_float(row.get("ci_lower_95"))
+            entry["ci_upper"] = clean_float(row.get("ci_upper_95"))
+            entry["ci_width"] = clean_float(row.get("ci_width"))
+        return quality
 
     def _build_peer_vectors(self):
         try:

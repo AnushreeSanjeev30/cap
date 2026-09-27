@@ -3,6 +3,8 @@ import os
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from .agent import run_query
+from .envelope import Envelope, SoftPowerQuery
 from .file_data import get_file_store
 
 try:
@@ -28,7 +30,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in ALLOWED_ORIGINS.split(",")],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -248,3 +250,15 @@ def get_global_importance():
             return rows_to_dicts(result)
 
     return with_fallback(db, lambda: get_file_store().global_importance)
+
+
+@app.post("/agent/query", response_model=Envelope)
+def agent_query(query: SoftPowerQuery):
+    """Orchestrator-facing endpoint: answers in the shared agent envelope.
+
+    Always served from the file store (it needs per-year Kalman CIs and KPI
+    coverage, which the Postgres schema doesn't hold). Unknown countries come
+    back as an empty insights list with metadata.data_quality.unknown_iso3,
+    not a 404, so one bad code doesn't fail a multi-country fan-out.
+    """
+    return run_query(query)
